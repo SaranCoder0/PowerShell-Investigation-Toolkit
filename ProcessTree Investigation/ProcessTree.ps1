@@ -1,6 +1,8 @@
 param (
     [Parameter(Mandatory = $true)]
-    [int]$ProcessID
+    [int]$ProcessID,
+
+    [switch]$Hash   # Optional switch to extract SHA-256 hash
 )
 
 # Define output file
@@ -9,6 +11,15 @@ $OutputFile = "$PSScriptRoot\ProcessTreeOutput.txt"
 # Clear previous output file (if exists)
 if (Test-Path $OutputFile) {
     Clear-Content $OutputFile
+}
+
+function Get-FileSHA256 {
+    param ([string]$FilePath)
+
+    if (Test-Path $FilePath) {
+        return (Get-FileHash -Path $FilePath -Algorithm SHA256).Hash
+    }
+    return "N/A"
 }
 
 function Write-Log {
@@ -45,11 +56,16 @@ function Get-ProcessTree {
         $exePath = $child.ExecutablePath
         if (-not $exePath) { $exePath = "N/A" }
 
+        $hashValue = "N/A"
+        if ($Hash -and $exePath -ne "N/A") {
+            $hashValue = Get-FileSHA256 -FilePath $exePath
+        }
+
         # Highlight in console + file if the process is the given ProcessID
         if ($child.ProcessId -eq $ProcessID) {
-            Write-Log (" " * ($Level * 4) + "|-- ==> ***$($child.ProcessId) : $($child.Name) ($exePath)*** <==") -Highlight
+            Write-Log (" " * ($Level * 4) + "|-- ==> ***$($child.ProcessId) : $($child.Name) ($exePath) SHA256: $hashValue*** <==") -Highlight
         } else {
-            Write-Log (" " * ($Level * 4) + "|-- " + $child.ProcessId + " : " + $child.Name + " (" + $exePath + ")")
+            Write-Log (" " * ($Level * 4) + "|-- " + $child.ProcessId + " : " + $child.Name + " ($exePath) SHA256: $hashValue")
         }
 
         Get-ProcessTree -ParentProcessID $child.ProcessId -Level ($Level + 1)
@@ -71,7 +87,12 @@ if ($process) {
             $exePath = $parentProcess.ExecutablePath
             if (-not $exePath) { $exePath = "N/A" }
 
-            Write-Log "$ParentProcessID : $($parentProcess.Name) ($exePath)"
+            $hashValue = "N/A"
+            if ($Hash -and $exePath -ne "N/A") {
+                $hashValue = Get-FileSHA256 -FilePath $exePath
+            }
+
+            Write-Log "$ParentProcessID : $($parentProcess.Name) ($exePath) SHA256: $hashValue"
             Get-ProcessTree -ParentProcessID $ParentProcessID
         } else {
             Write-Log "Parent process not found."
