@@ -7,7 +7,7 @@
 
 ## **Step 2: Run the Script**
 
-* Execute the following command to retrieve parent and child process IDs:
+* Execute the following command to retrieve parent and child process ID:
   ```
   .\ProcessTree.ps1
   ```
