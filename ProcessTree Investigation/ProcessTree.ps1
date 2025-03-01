@@ -3,18 +3,41 @@ param (
     [int]$ProcessID
 )
 
+# Define output file
+$OutputFile = "$PSScriptRoot\ProcessTreeOutput.txt"
+
+# Clear previous output file (if exists)
+if (Test-Path $OutputFile) {
+    Clear-Content $OutputFile
+}
+
+function Write-Log {
+    param (
+        [string]$Message,
+        [switch]$Highlight
+    )
+    
+    if ($Highlight) {
+        Write-Host $Message -ForegroundColor Yellow   # Highlighted in Yellow for Console
+    } else {
+        Write-Host $Message  # Normal Console Output
+    }
+    
+    Add-Content -Path $OutputFile -Value $Message   # Save to file
+}
+
 function Get-ProcessTree {
     param ([int]$ParentProcessID, [int]$Level = 0)
 
     if ($ParentProcessID -eq 0) {
-        Write-Host "Invalid ProcessID (0). Please provide a valid ProcessID."
+        Write-Log "Invalid ProcessID (0). Please provide a valid ProcessID." -Highlight
         return
     }
 
     $children = Get-WmiObject Win32_Process | Where-Object { $_.ParentProcessId -eq $ParentProcessID }
 
     if (-not $children) {
-        Write-Host (" " * ($Level * 4) + "|-- No child processes found for $ParentProcessID")
+        Write-Log (" " * ($Level * 4) + "|-- No child processes found for $ParentProcessID")
         return
     }
 
@@ -22,7 +45,13 @@ function Get-ProcessTree {
         $exePath = $child.ExecutablePath
         if (-not $exePath) { $exePath = "N/A" }
 
-        Write-Host (" " * ($Level * 4) + "|-- " + $child.ProcessId + " : " + $child.Name + " (" + $exePath + ")")
+        # Highlight in console + file if the process is the given ProcessID
+        if ($child.ProcessId -eq $ProcessID) {
+            Write-Log (" " * ($Level * 4) + "|-- ==> ***$($child.ProcessId) : $($child.Name) ($exePath)*** <==") -Highlight
+        } else {
+            Write-Log (" " * ($Level * 4) + "|-- " + $child.ProcessId + " : " + $child.Name + " (" + $exePath + ")")
+        }
+
         Get-ProcessTree -ParentProcessID $child.ProcessId -Level ($Level + 1)
     }
 }
@@ -32,24 +61,26 @@ $process = Get-WmiObject Win32_Process | Where-Object { $_.ProcessId -eq $Proces
 
 if ($process) {
     $ParentProcessID = $process.ParentProcessId
-    Write-Host "`nParent Process ID for $($ProcessID): $ParentProcessID`n"
+    Write-Log "`nParent Process ID for ==> ***$($ProcessID)*** : $ParentProcessID`n" -Highlight
 
     # Step 2: Fetch Process Tree for Parent Process ID
     if ($ParentProcessID -ne 0) {
-        Write-Host "`nProcess Tree for Parent Process ID: $ParentProcessID`n"
+        Write-Log "`nProcess Tree for Parent Process ID: $ParentProcessID`n"
         $parentProcess = Get-WmiObject Win32_Process | Where-Object { $_.ProcessId -eq $ParentProcessID }
         if ($parentProcess) {
             $exePath = $parentProcess.ExecutablePath
             if (-not $exePath) { $exePath = "N/A" }
 
-            Write-Host "$ParentProcessID : $($parentProcess.Name) ($exePath)"
+            Write-Log "$ParentProcessID : $($parentProcess.Name) ($exePath)"
             Get-ProcessTree -ParentProcessID $ParentProcessID
         } else {
-            Write-Host "Parent process not found."
+            Write-Log "Parent process not found."
         }
     } else {
-        Write-Host "No valid parent process found."
+        Write-Log "No valid parent process found."
     }
 } else {
-    Write-Host "No process found with ID $ProcessID"
+    Write-Log "No process found with ID $ProcessID"
 }
+
+Write-Log "nProcess tree saved to: $OutputFile"
