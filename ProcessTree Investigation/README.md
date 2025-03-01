@@ -11,3 +11,11 @@
   ```
   .\ProcessTree.ps1
   ```
+
+## Step 3: Retrieve SHA-256 Hash of Executables (Optional)
+
+To include the SHA-256 hash of each process executable in the output, use the `-Hash` flag:
+
+```powershell
+.\ProcessTree.ps1 -ProcessID <PID> -Hash
+```
