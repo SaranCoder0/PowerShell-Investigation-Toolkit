@@ -1,7 +1,5 @@
 # PowerShell Scripts and Commands for Investigation
 
-# PowerShell Scripts and Commands for Investigation
-
 A collection of **PowerShell commands and scripts** for **threat hunting, forensic investigation, and security analysis**.
 
 ---
