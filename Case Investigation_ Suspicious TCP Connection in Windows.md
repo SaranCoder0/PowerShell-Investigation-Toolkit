@@ -1,4 +1,3 @@
-
 # **Case Investigation: Suspicious TCP Connection in Windows**
 
 ## **Case Overview**
