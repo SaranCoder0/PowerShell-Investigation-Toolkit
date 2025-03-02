@@ -1,4 +1,3 @@
-
 # **Usage Steps for Process Tree Script**
 
 ## **Step 1: Open PowerShell**
@@ -17,5 +16,5 @@
 To include the SHA-256 hash of each process executable in the output, use the `-Hash` flag:
 
 ```powershell
-.\ProcessTree.ps1 -ProcessID <PID> -Hash
+.\ProcessTree.ps1 -Hash
 ```
