@@ -17,7 +17,11 @@ function Get-FileSHA256 {
     param ([string]$FilePath)
 
     if (Test-Path $FilePath) {
-        return (Get-FileHash -Path $FilePath -Algorithm SHA256).Hash
+        try {
+            return (Get-FileHash -Path $FilePath -Algorithm SHA256).Hash
+        } catch {
+            return "Error calculating hash"
+        }
     }
     return "N/A"
 }
@@ -45,7 +49,7 @@ function Get-ProcessTree {
         return
     }
 
-    $children = Get-WmiObject Win32_Process | Where-Object { $_.ParentProcessId -eq $ParentProcessID }
+    $children = Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $ParentProcessID }
 
     if (-not $children) {
         Write-Log (" " * ($Level * 4) + "|-- No child processes found for $ParentProcessID")
@@ -56,16 +60,18 @@ function Get-ProcessTree {
         $exePath = $child.ExecutablePath
         if (-not $exePath) { $exePath = "N/A" }
 
-        $hashValue = "N/A"
+        $logMessage = " " * ($Level * 4) + "|-- " + $child.ProcessId + " : " + $child.Name + " ($exePath)"
+
         if ($Hash -and $exePath -ne "N/A") {
             $hashValue = Get-FileSHA256 -FilePath $exePath
+            $logMessage += " SHA256: $hashValue"
         }
 
         # Highlight in console + file if the process is the given ProcessID
         if ($child.ProcessId -eq $ProcessID) {
-            Write-Log (" " * ($Level * 4) + "|-- ==> ***$($child.ProcessId) : $($child.Name) ($exePath) SHA256: $hashValue*** <==") -Highlight
+            Write-Log ("|-- ==> ***$logMessage*** <==") -Highlight
         } else {
-            Write-Log (" " * ($Level * 4) + "|-- " + $child.ProcessId + " : " + $child.Name + " ($exePath) SHA256: $hashValue")
+            Write-Log $logMessage
         }
 
         Get-ProcessTree -ParentProcessID $child.ProcessId -Level ($Level + 1)
@@ -73,7 +79,7 @@ function Get-ProcessTree {
 }
 
 # Step 1: Get Parent Process ID
-$process = Get-WmiObject Win32_Process | Where-Object { $_.ProcessId -eq $ProcessID }
+$process = Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -eq $ProcessID }
 
 if ($process) {
     $ParentProcessID = $process.ParentProcessId
@@ -82,17 +88,19 @@ if ($process) {
     # Step 2: Fetch Process Tree for Parent Process ID
     if ($ParentProcessID -ne 0) {
         Write-Log "`nProcess Tree for Parent Process ID: $ParentProcessID`n"
-        $parentProcess = Get-WmiObject Win32_Process | Where-Object { $_.ProcessId -eq $ParentProcessID }
+        $parentProcess = Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -eq $ParentProcessID }
         if ($parentProcess) {
             $exePath = $parentProcess.ExecutablePath
             if (-not $exePath) { $exePath = "N/A" }
 
-            $hashValue = "N/A"
+            $logMessage = "$ParentProcessID : $($parentProcess.Name) ($exePath)"
+            
             if ($Hash -and $exePath -ne "N/A") {
                 $hashValue = Get-FileSHA256 -FilePath $exePath
+                $logMessage += " SHA256: $hashValue"
             }
 
-            Write-Log "$ParentProcessID : $($parentProcess.Name) ($exePath) SHA256: $hashValue"
+            Write-Log $logMessage
             Get-ProcessTree -ParentProcessID $ParentProcessID
         } else {
             Write-Log "Parent process not found."
@@ -104,4 +112,4 @@ if ($process) {
     Write-Log "No process found with ID $ProcessID"
 }
 
-Write-Log "nProcess tree saved to: $OutputFile"
+Write-Log "`nProcess tree saved to: $OutputFile"
