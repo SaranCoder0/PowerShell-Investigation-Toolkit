@@ -98,6 +98,18 @@ Get-NetIPAddress | Select-Object InterfaceAlias, IPAddress
 ```powershell
 Get-ChildItem -Path C:\Users\ -Recurse | Where-Object {$_.LastWriteTime -gt (Get-Date).AddDays(-7)} | Sort-Object LastWriteTime -Descending
 ```
+```powershell
+$start = Get-Date "2025-04-21 00:00:00"
+$end = Get-Date "2025-04-21 23:59:59"
+
+Get-ChildItem -Path C:\ -Recurse -ErrorAction SilentlyContinue -Force |
+Where-Object {
+    ($_.CreationTime -ge $start -and $_.CreationTime -le $end) -or
+    ($_.LastWriteTime -ge $start -and $_.LastWriteTime -le $end)
+} |
+Select-Object FullName, CreationTime, LastWriteTime |
+Export-Csv -Path "$env:USERPROFILE\Desktop\FileChanges-21-04-2025.csv" -NoTypeInformation
+```
 
 ### Get Installed Software
 
